@@ -6,29 +6,19 @@ const cors = require("cors");
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-/* =================== CORS (STATIC – reminder safe) =================== */
-const allowedOrigins = [
-  "https://ecommerce-frontend-liart-beta.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:3000"
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST", "OPTIONS"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-// MUST be before routes to handle preflight
-app.options("*", cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "OPTIONS"],
+/* =================== CORS CONFIGURATION =================== */
+const corsOptions = {
+  origin: [
+    "https://ecommerce-frontend-liart-beta.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'stripe-signature']
+};
+
+app.use(cors(corsOptions));
 
 /* =================== STRIPE WEBHOOK =================== */
 app.post(
@@ -56,13 +46,22 @@ app.post(
   }
 );
 
-/* =================== NORMAL JSON =================== */
+/* =================== NORMAL JSON PARSING =================== */
 app.use(express.json());
 
-/* =================== PAYMENT =================== */
+/* =================== HEALTH CHECK =================== */
+app.get("/", (req, res) => {
+  res.json({ message: "Payment Server is running!" });
+});
+
+/* =================== CREATE PAYMENT INTENT =================== */
 app.post("/create-payment-intent", async (req, res) => {
   try {
     const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
@@ -72,13 +71,18 @@ app.post("/create-payment-intent", async (req, res) => {
 
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
-    console.error(err);
+    console.error("Payment Intent Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-/* =================== SERVER =================== */
+/* =================== 404 HANDLER =================== */
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+/* =================== SERVER START =================== */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log("🚀 Server running on port", PORT);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
