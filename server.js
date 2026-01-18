@@ -6,7 +6,23 @@ const bodyParser = require("body-parser");
 const port = process.env.PORT || 5000;
 const app = express();
 
-app.use(cors());
+// Configure CORS for production
+const allowedOrigins = [
+  'ecommerce-backend-production-a727.up.railway.app',
+  'http://localhost:5173', // For local development
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(bodyParser.json());
 
 // Create Payment Intent
