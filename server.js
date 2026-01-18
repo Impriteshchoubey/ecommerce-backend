@@ -7,16 +7,28 @@ const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 /* =================== CORS (STATIC – reminder safe) =================== */
+const allowedOrigins = [
+  "https://ecommerce-frontend-liart-beta.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
 app.use(
   cors({
-    origin: "https://ecommerce-frontend-liart-beta.vercel.app",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// MUST be before routes
-app.options("*", cors());
+// MUST be before routes to handle preflight
+app.options("*", cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 /* =================== STRIPE WEBHOOK =================== */
 app.post(
